@@ -25,7 +25,7 @@ class Padrao
 		$buscar = $pdo->prepare($sql);
 
 		if($filtros != NULL){
-			foreach ($filtros as $filtro => $valor)	$buscar->bindParam(":$filtro", $valor);
+			foreach ($filtros as $filtro => $valor)	$buscar->bindValue(":$filtro", $valor);
 		}
 
 		$buscar->execute();
