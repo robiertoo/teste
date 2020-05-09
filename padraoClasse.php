@@ -6,22 +6,21 @@ class Padrao
 {
 	public function buscar($pdo, $tabela, $campos, $filtros = NULL, $grupos = NULL)
 	{
-		$sql = "SELECT 1";
+		$sqlCampos = $sqlFiltros = $sqlGrupos = "";
 
-		foreach ($campos as $campo) $sql .= ", $campo";
-
-		$sql .= " FROM $tabela WHERE 1 = 1";
+		foreach ($campos as $campo) $sqlCampos .= ", $campo";
 
 		if($filtros != NULL){
-			foreach ($filtros as $filtro => $valor) $sql .= " AND $filtro = :$filtro";
+			foreach ($filtros as $filtro => $valor) $sqlFiltros .= " AND $filtro = :$filtro";
 		}
 
 		if($grupos != NULL){
-			$sql .= " GROUP BY";
-			foreach ($grupos as $grupo) $sql .= " $grupo,";
-			$sql = substr($sql, 0, -1); 
+			$sqlGrupos .= " GROUP BY";
+			foreach ($grupos as $grupo) $sqlGrupos .= " $grupo,";
+			$sqlGrupos = substr($sqlGrupos, 0, -1); 
 		}
 
+		$sql = "SELECT 1 $sqlCampos FROM $tabela WHERE 1 = 1 $sqlFiltros $sqlGrupos";
 		$buscar = $pdo->prepare($sql);
 
 		if($filtros != NULL){
@@ -34,27 +33,63 @@ class Padrao
 
 	public function salvar($pdo, $tabela, $campos)
 	{
-		$sql = "INSERT INTO $tabela (";
+		$sqlCampos = $sqlValores = "";
 
 		foreach ($campos as $campo => $valor) {
-			$sql .= "$campo, ";
+			$sqlCampos .= "$campo, ";
+			$sqlValores .= ":$campo, ";
 		}
-		$sql = substr($sql, 0, -2);
-		$sql .= ") VALUES (";
+		$sqlCampos = substr($sqlCampos, 0, -2);
+		$sqlValores = substr($sqlValores, 0, -2);
 
-		foreach ($campos as $campo => $valor) {
-			$sql .= ":$campo, "; 
-		}
-
-		$sql = substr($sql, 0, -2);
-		$sql .= ")";
+		$sql = "INSERT INTO $tabela ($sqlCampos) VALUES ($sqlValores)";
+		
 		$salvar = $pdo->prepare($sql);
 
-		foreach ($campos as $campo => $valor) {	
-			$salvar->bindValue(":$campo", $valor);			
-		}
+		foreach ($campos as $campo => $valor) $salvar->bindValue(":$campo", $valor);
 
 		$salvar->execute();
 		return $salvar;
+	}
+
+	public function atualizar($pdo, $tabela, $campos, $filtros = NULL)
+	{
+		$sqlCampos = $sqlValores = $sqlFiltros = "";
+
+		foreach ($campos as $campo => $valor) {
+			$sqlCampos .= "$campo, ";
+			$sqlValores .= "$valor, ";
+		}
+		$sqlCampos = substr($sqlCampos, 0, -2);
+		$sqlValores = substr($sqlValores, 0, -2);
+
+		if($filtros != NULL){
+			$sqlFiltros .= "WHERE ";
+			foreach ($filtros as $filtro => $valor) {
+				$sqlFiltros .= "$filtro = $valor";
+			}
+		}
+
+		$sql = "UPDATE $tabela SET $sqlCampos = $sqlValores $sqlFiltros";
+		$atualizar = $pdo->prepare($sql);
+		$atualizar->execute();
+		return $atualizar;
+	}
+
+	public function apagar($pdo, $tabela, $filtros)
+	{
+		$sqlFiltros = "";
+
+		foreach ($filtros as $filtro => $valor) $sqlFiltros .= "$filtro = :$filtro, ";
+
+		$sqlFiltros = substr($sqlFiltros, 0, -2);
+
+		$sql = "DELETE FROM $tabela WHERE $sqlFiltros";
+		$apagar = $pdo->prepare($sql);
+
+		foreach ($filtros as $filtro => $valor) $apagar->bindValue(":$filtro", $valor);
+
+		$apagar->execute();
+		return $apagar;
 	}
 }
